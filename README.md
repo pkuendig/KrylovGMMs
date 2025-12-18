@@ -1,6 +1,6 @@
-# Scalable Computations for Generalized Mixed Effects Models with Crossed Random Effects Using Krylov Subspace Methods
+# Scalable Krylov Subspace Methods for Generalized Mixed Effects Models with Crossed Random Effects
 
-This repository contains the R code for the simulation studies and real-world applications in the paper "Scalable Computations for Generalized Mixed Effects Models with Crossed Random Effects Using Krylov Subspace Methods". Krylov subspace methods for Generalized Mixed Effects Models (GMMs) are implemented in the package GPBoost: <https://github.com/fabsig/GPBoost>.
+This repository contains the R code for the simulation studies and real-world applications in the paper "Scalable Krylov Subspace Methods for Generalized Mixed Effects Models with Crossed Random Effects". Krylov subspace methods for Generalized Mixed Effects Models (GMMs) are implemented in the package GPBoost: <https://github.com/fabsig/GPBoost>.
 
 * The `simulation_studies` folder contains the scripts to run the simulations. See `simulation_studies\README.md` for a detailed description of the different simulations.
 * The `real_world_applications` folder contains the scripts to run the real-world data applications. See `real_world_applications\README.md` for more information about the real-world applications.
@@ -30,13 +30,13 @@ root
 │   │   chicago_building_permits.R
 │   │   instEval.R
 │   │   KDDCup09_upselling.R
+│   │   MovieLens.R
 │   │   show_results.R
 │
 └───simulation_studies
     │   README.md
     │   bias_analysis.R
-    │   compare_preconditioner_nll_Bernoulli.R
-    │   compare_preconditioner_nll_Gaussian.R
+    │   compare_preconditioner_nll.R
     │   estimation_prediction_Bernoulli.R
     │   estimation_prediction_Gaussian.R
     │   estimation_prediction_show_results.R 
