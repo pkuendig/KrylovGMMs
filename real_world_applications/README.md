@@ -10,5 +10,6 @@ To replicate the real-world data applications from Section 6, proceed as follows
     - `chicago_building_permits.R`
     - `instEval.R`
     - `KDDCup09_upselling.R`
+    - `MovieLens.R`
 
 3. Run `show_results.R` to generate the tables and plots from Section 6.
