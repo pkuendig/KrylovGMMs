@@ -6,4 +6,4 @@ The following list shows the sources of the real-world data sets:
 - `cars_df5.csv`: Corresponds to `vehicles.csv` from <https://www.kaggle.com/datasets/austinreese/craigslist-carstrucks-data> and processed with `cars_etl.R` from <https://github.com/gsimchoni/lmmnn/blob/main/r_scripts/ETL/cars_etl.R>.
 - `chicago_building_permits.csv` (as ZIP file): Available at <https://www.kaggle.com/datasets/chicago/chicago-building-permits?resource=download>
 - `KDDCup09_upselling.arff` (as ZIP file): Available at <https://openml.org/search?type=data&status=active&id=1114&sort=runs>
-- `ml-32m.zip` (as ZIP file): Available at <https://grouplens.org/datasets/movielens/32m/>
+- `ml-32m.zip` (not included): The MovieLens_32m data set is available at <https://grouplens.org/datasets/movielens/32m/>.
