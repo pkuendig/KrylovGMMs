@@ -1,51 +1,45 @@
 
-make_data <- function(n, m1, 
-                      sigma2=0.5^2, sigma2_1=0.5^2, sigma2_2=0.5^2, sigma2_3=0.5^2,
-                      randef, likelihood, has_F = FALSE, factor_m2=1, num_covariates=5){
-  group <- rep(1,n)
-  for(i in 1:m1) group[((i-1)*n/m1+1):(i*n/m1)] <- i
-  b1 <- sqrt(sigma2_1) * rnorm(m1)
-  if(randef == "One_random_effect"){
-    eps <- b1[group]
-    group_data <- group
-  } else if(randef == "Two_completely_crossed_random_effects"){
-    n_obs_gr <- n/m1
-    group2 <- rep(1,n)
-    for(i in 1:m1) group2[(1:n_obs_gr)+n_obs_gr*(i-1)] <- 1:n_obs_gr
-  } else if(randef == "Two_randomly_crossed_random_effects"){
-    if(factor_m2 != 1){
-      m2 <- factor_m2*m1
-      group2 <- rep(1,n)
-      for(i in 1:m2) group2[((i-1)*n/m2+1):(i*n/m2)] <- i
-      group2 <- group2[sample.int(n=n, size=n, replace=FALSE)]
-    }
-    else{
-      group2 <-  group[sample.int(n=n, size=n, replace=FALSE)]  
-    }
-  } else if(randef == "Two_nested_random_effects"){
-    m_nested <- m1*2
-    group2 <- rep(1,n)
-    for(i in 1:m_nested) group2[((i-1)*n/m_nested+1):(i*n/m_nested)] <- i
-  }
-  else if(randef == "Three_randomly_crossed_random_effects"){
-    group2 <-  group[sample.int(n=n, size=n, replace=FALSE)]
-    group3 <-  group[sample.int(n=n, size=n, replace=FALSE)]
-  }
-  if(randef != "One_random_effect"){
-    if(randef == "Three_randomly_crossed_random_effects") {
-      b2 <- sqrt(sigma2_2) * rnorm(length(unique(group2)))
-      b3 <- sqrt(sigma2_3) * rnorm(length(unique(group3)))
-      if (length(unique(group2)) != max(group2)) stop("not all levels samples -> gives index problems")
-      if (length(unique(group3)) != max(group3)) stop("not all levels samples -> gives index problems")
-      eps <- b1[group] + b2[group2] + b3[group3]
-      group_data <- cbind(group,group2,group3)
+make_data <- function(n, m1, sigma2=0.5^2, sigma2_1=0.5^2, sigma2_2=0.5^2,
+                      likelihood, factor_m2=1, balanced = TRUE, size_neg_bin = 1,
+                      has_F = FALSE, num_covariates=5, randef = NULL){
+  if (!balanced) {
+    if (size_neg_bin < 0 ) {
+      group <- rpois(n = m1, lambda = n/m1 - 1) + 1
     } else {
-      b2 <- sqrt(sigma2_2) * rnorm(length(unique(group2)))
-      if (length(unique(group2)) != max(group2)) stop("not all levels samples -> gives index problems")
-      eps <- b1[group] + b2[group2]
-      group_data <- cbind(group,group2)
+      group <- rnbinom(n = m1, size = size_neg_bin, mu = n/m1 - 1) + 1
     }
+    group <- rep(seq_along(group), times = group)
+  } else {
+    group <- rep(1,n)
+    for(i in 1:m1) group[((i-1)*n/m1+1):(i*n/m1)] <- i
   }
+  m2 <- as.integer(factor_m2 * m1)
+  if (!balanced) {
+    if (size_neg_bin < 0 ) {
+      group2 <- rpois(n = m2, lambda = n/m2 - 1) + 1
+    } else {
+      group2 <- rnbinom(n = m2, size = size_neg_bin, mu = n/m2 - 1) + 1
+    }
+    group2 <- rep(seq_along(group2), times = group2)
+  } else {
+    group2 <- rep(1,n)
+    for(i in 1:m2) group2[((i-1)*n/m2+1):(i*n/m2)] <- i
+  }
+  group2 <- group2[sample.int(n=length(group2), size=length(group2), replace=FALSE)]
+  if (!balanced) {
+    # make sure that both random effects have the same sample size by adding some samples
+    if(length(group) < length(group2)) {
+      group <- c(group, group[sample.int(n=length(group), size=length(group2) - length(group), replace=FALSE)])
+    } else if(length(group) > length(group2)) {
+      group2 <- c(group2, group2[sample.int(n=length(group2), size=length(group) - length(group2), replace=FALSE)])
+    }
+    n <- length(group)
+  }
+  b1 <- sqrt(sigma2_1) * rnorm(length(group))
+  b2 <- sqrt(sigma2_2) * rnorm(length(unique(group2)))
+  if (length(unique(group2)) != max(group2)) stop("not all levels samples -> gives index problems")
+  eps <- b1[group] + b2[group2]
+  group_data <- cbind(group,group2)
   #Simulate fixed effects
   if (has_F) {
     #The covariates X are sampled from a normal distribution with mean 0 and variance chosen such that 

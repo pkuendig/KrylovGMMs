@@ -73,7 +73,8 @@ colnames(beta_results) <- beta_cols
 ###Estimation###################################################################
 i <- 1
 
-#gp_model$get_optim_params()$init_cov_pars
+# We use the same initial values for all libraries.
+# The following are internal default initial values used by GPBoost
 init_cov_pars <- c(0.889, 0.444443, 0.444443)
 init_betas <- c(3.206,rep(0,ncol(X)-1))
 
@@ -83,7 +84,7 @@ chol_model <- GPModel(group_data = group_data,
                       matrix_inversion_method = "cholesky")
 
 chol_model$set_optim_params(params = list(maxit=1000,
-                                          trace=T,
+                                          trace=TRUE,
                                           init_cov_pars=init_cov_pars,
                                           init_coef=init_betas))
 
@@ -102,7 +103,7 @@ it_model <- GPModel(group_data = group_data,
                     matrix_inversion_method = "iterative")
 
 it_model$set_optim_params(params = list(maxit=1000,
-                                        trace=T,
+                                        trace=TRUE,
                                         init_cov_pars=init_cov_pars,
                                         init_coef=init_betas,
                                         cg_preconditioner_type="zero_infill_incomplete_cholesky"))

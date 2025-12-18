@@ -6,13 +6,9 @@ Simulated data is generated using the function `make_data()` in the file `root\d
   
    Variance parameter estimation with a Laplace approximation and Krylov subspace methods for varying numbers of repeated observations per random effect realization as shown in Figure 1, Section 1.
 
-* `compare_preconditioner_nll_Gaussian.R`
+* `compare_preconditioner_nll.R`
 
-  Preconditioner comparison with regard to runtime and variance of log-marginal likelihoods for different numbers of random vectors for Gaussian likelihoods. Only the ZIC, SSOR, and diagonal preconditioners are considered, as the other preconditioners are not implemented in the publicly available version of GPBoost. Select the balanced or unbalanced random effects design to generate the results shown in Figure 2 in Section 5.2 or Figure 10 in Appendix A.8, respectively. To generate the results shown in Figure 11 in Appendix A.8, uncomment the alternative signal-to-noise ratio.
-
-* `compare_preconditioner_nll_Bernoulli.R`
-
-  Preconditioner comparison with regard to runtime and variance of log-marginal likelihoods for different numbers of random vectors for Bernoulli likelihoods (Figure 9 in Appendix A.8). Only the ZIC, SSOR, and diagonal preconditioners are considered, as the other preconditioners are not implemented in the publicly available version of GPBoost.
+  Preconditioner comparison with regard to runtime and accuracy of log-marginal likelihoods. 
 
 * `estimation_prediction_Gaussian.R`, `estimation_prediction_Bernoulli.R`, and `estimation_prediction_show_results.R`
   
