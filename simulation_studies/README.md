@@ -25,3 +25,33 @@ Simulated data is generated using the function `make_data()` in the file `root\d
 * `time_vs_m_unbalanced_Gaussian.R`, `time_vs_m_unbalanced_Bernoulli.R`, and `time_vs_m_unbalanced_plotting.R`
 
   Runtime comparison for parameter estimation for different numbers of random effects m, when the random effects design is unbalanced (m_2=m_1/2). First run `time_vs_m_unbalanced_Gaussian.R` and `time_vs_m_unbalanced_Bernoulli.R` and then run `time_vs_m_unbalanced_plotting.R` to generate Figure 12 in Appendix A.9.
+
+The `time_vs_m` experiments include MixedModels.jl and R-INLA in addition to
+GPBoost, lme4, and glmmTMB. R-INLA uses its empirical-Bayes hyperparameter
+integration strategy (`int.strategy = "eb"`) with flat fixed-effect and
+log-precision priors. Because R-INLA integrates the fixed effects out as part of
+the latent field, its empirical-Bayes optimum is the REML rather than the ML
+optimum; the latent-field marginals are not used and are switched off so that
+the measured runtime reflects parameter estimation only.
+
+Methods can be selected without editing the scripts. For example, a trial run
+that excludes lme4 and glmmTMB can be launched from a shell with
+
+```text
+KRYLOVGMM_METHODS=cholesky,krylov,mixedmodels,inla Rscript time_vs_m_balanced_Gaussian.R
+```
+
+or from an R session with
+
+```r
+options(krylovgmms.methods = c("cholesky", "krylov", "mixedmodels", "inla"))
+source("time_vs_m_balanced_Gaussian.R")
+```
+
+Valid method identifiers are `cholesky`, `krylov`, `lme4`, `glmmtmb`,
+`mixedmodels`, and `inla`.
+
+By default, the MixedModels.jl adapter performs one small untimed warm-up fit
+per likelihood/formula shape so that Julia JIT compilation is not included in
+`time_estimation`. Set `options(krylovgmms.mixedmodels.warmup = FALSE)` before
+running a script if startup and compilation time should be included instead.

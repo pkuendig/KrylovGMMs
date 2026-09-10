@@ -1,11 +1,19 @@
 library(gpboost)
-library(lme4)
-library(glmmTMB)
 
 set.seed(1)
 
 ###Import data##################################################################
-setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+.source_paths <- vapply(sys.frames(), function(frame) {
+  if (is.null(frame$ofile)) "" else frame$ofile
+}, character(1))
+.script_path <- if (any(nzchar(.source_paths))) tail(.source_paths[nzchar(.source_paths)], 1) else ""
+.file_args <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+if (!nzchar(.script_path) && length(.file_args)) .script_path <- sub("^--file=", "", .file_args[1])
+if (!nzchar(.script_path)) .script_path <- tryCatch(rstudioapi::getSourceEditorContext()$path, error = function(e) "")
+if (nzchar(.script_path)) setwd(dirname(normalizePath(.script_path)))
+source("./../experiment_helpers.R")
+if (method_enabled("lme4")) library(lme4)
+if (method_enabled("glmmtmb")) library(glmmTMB)
 my_data <- read.csv("./../data/real_world/cars_df5.csv")
 
 ###Prepare data#################################################################
@@ -46,32 +54,24 @@ for(i in 1:ncol(group_data)){
   data_info$nr_levels[i] <- length(unique(group_data[,cat_vars[i]]))
 }
 
-#Infos on Z^TZ
-parsedFormula <- lFormula(form = paste0("y ~ 1 + ", paste0("(1|",cat_vars,")", collapse = ' + ')), 
-                          data = data.frame(cbind(y=rep(1,dim(group_data)[1]),group_data))) 
-Ztlist <- parsedFormula$reTrms$Ztlist
-for(i in 1:length(Ztlist)){
-  if(i==1){
-    Z <- t(Ztlist[[i]])
-  }else{
-    Z <- cbind(Z, t(Ztlist[[i]]))
-  }
-}
-ZtZ <- t(Z)%*%Z
-data_info$nnz_ZtZ[1] <- nnzero(ZtZ)
+# Infos on Z^TZ
+data_info$nnz_ZtZ[1] <- count_group_ztz_nnz(group_data)
 #image(ZtZ, xlab="", ylab="", sub="", main="cars")
 
 ###Data frames##################################################################
 res_cols <- c("method", "time_estimation", "num_optim_iter", "nll_optimum")
-results <- data.frame(matrix(nrow=4, ncol = length(res_cols)))
+results <- data.frame(matrix(nrow=6, ncol = length(res_cols)))
 colnames(results) <- res_cols
+results$method <- c("Cholesky (GPBoost)", "Krylov (GPBoost)", "glmmTMB", "lme4",
+                    "MixedModels.jl", "R-INLA (EB)")
+log_real_world_start("cars")
 
 cov_cols <- c("sigma", paste0("sigma2_", 1:length(cat_vars)))
-cov_results <- data.frame(matrix(nrow=4, ncol = length(cov_cols)))
+cov_results <- data.frame(matrix(nrow=6, ncol = length(cov_cols)))
 colnames(cov_results) <- cov_cols
 
 beta_cols <- paste0("beta_", 0:(ncol(X)-1))
-beta_results <- data.frame(matrix(nrow=4, ncol = length(beta_cols)))
+beta_results <- data.frame(matrix(nrow=6, ncol = length(beta_cols)))
 colnames(beta_results) <- beta_cols
 
 ###Estimation###################################################################
@@ -83,64 +83,82 @@ init_cov_pars <- c(0.282, 0.141, 0.141)
 init_betas <- c(9.597, rep(0, ncol(X)-1))
 
 ###Cholesky#####################################################################
-chol_model <- GPModel(group_data = group_data,
-                      likelihood="gaussian",
-                      matrix_inversion_method = "cholesky")
+if (method_enabled("cholesky")) {
+log_real_world_method("cholesky")
+  chol_model <- GPModel(group_data = group_data,
+                        likelihood="gaussian",
+                        matrix_inversion_method = "cholesky")
 
-chol_model$set_optim_params(params = list(maxit=1000,
-                                          trace=TRUE,
-                                          init_cov_pars=init_cov_pars,
-                                          init_coef=init_betas))
+  chol_model$set_optim_params(params = list(maxit=1000,
+                                            trace=TRUE,
+                                            init_cov_pars=init_cov_pars,
+                                            init_coef=init_betas))
 
-results$method[i] <- "Cholesky (GPBoost)"
-results$time_estimation[i] <- system.time(chol_model$fit(y=Y, X=X))[3]
-beta_results[i,] <- chol_model$get_coef()
-cov_results[i,] <- chol_model$get_cov_pars()
-results$nll_optimum[i] <- chol_model$get_current_neg_log_likelihood()
-results$num_optim_iter[i] <- chol_model$get_num_optim_iter()
+  results$method[i] <- "Cholesky (GPBoost)"
+  results$time_estimation[i] <- system.time(chol_model$fit(y=Y, X=X))[3]
+  beta_results[i,] <- chol_model$get_coef()
+  cov_results[i,] <- chol_model$get_cov_pars()
+  results$nll_optimum[i] <- chol_model$get_current_neg_log_likelihood()
+  results$num_optim_iter[i] <- chol_model$get_num_optim_iter()
+}
+log_real_world_result("cholesky", results$time_estimation[i])
 
 i <- i + 1
 
 ###Krylov#####################################################################
-it_model <- GPModel(group_data = group_data,
-                    likelihood="gaussian",
-                    matrix_inversion_method = "iterative")
+if (method_enabled("krylov")) {
+log_real_world_method("krylov")
+  it_model <- GPModel(group_data = group_data,
+                      likelihood="gaussian",
+                      matrix_inversion_method = "iterative")
 
-it_model$set_optim_params(params = list(maxit=1000,
-                                        trace=TRUE,
-                                        init_cov_pars=init_cov_pars,
-                                        init_coef=init_betas,
-                                        seed_rand_vec_trace=1,
-                                        cg_preconditioner_type="zero_infill_incomplete_cholesky"))
+  it_model$set_optim_params(params = list(maxit=1000,
+                                          trace=TRUE,
+                                          init_cov_pars=init_cov_pars,
+                                          init_coef=init_betas,
+                                          cg_preconditioner_type="zero_infill_incomplete_cholesky"))
 
 
-results$method[i] <- "Krylov (GPBoost)"
-results$time_estimation[i] <- system.time(it_model$fit(y=Y, X=X))[3]
-beta_results[i,] <- it_model$get_coef()
-cov_results[i,] <- it_model$get_cov_pars()
-results$nll_optimum[i] <- it_model$get_current_neg_log_likelihood()
-results$num_optim_iter[i] <- it_model$get_num_optim_iter()
+  results$method[i] <- "Krylov (GPBoost)"
+  results$time_estimation[i] <- system.time(it_model$fit(y=Y, X=X))[3]
+  beta_results[i,] <- it_model$get_coef()
+  cov_results[i,] <- it_model$get_cov_pars()
+  results$nll_optimum[i] <- it_model$get_current_neg_log_likelihood()
+  results$num_optim_iter[i] <- it_model$get_num_optim_iter()
+}
+log_real_world_result("krylov", results$time_estimation[i])
 
 i <- i + 1
 
 ###glmmTMB####################################################################
-formula <- as.formula(paste0("y ~ -1 + ",paste0(colnames(X), collapse = ' + ')," + ",paste0("(1|",cat_vars,")", collapse = ' + '))) 
-results$time_estimation[i] <- system.time(glmmTMB_model <- glmmTMB(formula, family=gaussian(), data = data.frame(y = Y, cbind(X, group_data)), 
-                                                                   start=list(theta = init_cov_pars[-1], beta = init_betas)))[3]
+if (method_enabled("glmmtmb")) {
+log_real_world_method("glmmtmb")
+  formula <- as.formula(paste0("y ~ -1 + ",paste0(colnames(X), collapse = ' + ')," + ",paste0("(1|",cat_vars,")", collapse = ' + ')))
+  results$time_estimation[i] <- system.time(glmmTMB_model <- glmmTMB(formula, family=gaussian(), data = data.frame(y = Y, cbind(X, group_data)),
+                                                                     start=list(theta = glmmtmb_start_theta(init_cov_pars, "gaussian"),
+                                                                                betadisp = glmmtmb_start_betadisp(init_cov_pars),
+                                                                                beta = init_betas),
+                                                                     #default caps (iter.max=300, eval.max=400) are reached before convergence
+                                                                     control = glmmTMBControl(optCtrl = list(iter.max = 10000,
+                                                                                                             eval.max = 20000))))[3]
 
-results$method[i] <- "glmmTMB"
-beta_results[i,] <- fixef(glmmTMB_model)$cond
-cov_results[i,] <- c((summary(glmmTMB_model)$sigma)^2, as.numeric(VarCorr(glmmTMB_model)$cond))
-results$nll_optimum[i] <- -as.numeric(summary(glmmTMB_model)$logLik)
-results$num_optim_iter[i] <- glmmTMB_model$fit$iterations
+  results$method[i] <- "glmmTMB"
+  beta_results[i,] <- fixef(glmmTMB_model)$cond
+  cov_results[i,] <- c((summary(glmmTMB_model)$sigma)^2, as.numeric(VarCorr(glmmTMB_model)$cond))
+  results$nll_optimum[i] <- -as.numeric(summary(glmmTMB_model)$logLik)
+  results$num_optim_iter[i] <- glmmTMB_model$fit$iterations
+}
+log_real_world_result("glmmtmb", results$time_estimation[i])
 
 i <- i + 1
 
 ###lme4#########################################################################
+if (method_enabled("lme4")) {
+log_real_world_method("lme4")
 try({
-  formula <- as.formula(paste0("y ~ -1 + ",paste0(colnames(X), collapse = ' + ')," + ",paste0("(1|",cat_vars,")", collapse = ' + '))) 
-  results$time_estimation[i] <- system.time(lme4_model <- lmer(formula, REML = FALSE, data = data.frame(y = Y, cbind(X, group_data)), 
-                                                               start=list(theta = init_cov_pars[-1], fixef = init_betas)))[3]
+  formula <- as.formula(paste0("y ~ -1 + ",paste0(colnames(X), collapse = ' + ')," + ",paste0("(1|",cat_vars,")", collapse = ' + ')))
+  results$time_estimation[i] <- system.time(lme4_model <- lmer(formula, REML = FALSE, data = data.frame(y = Y, cbind(X, group_data)),
+                                                               start=list(theta = lme4_start_theta(init_cov_pars, group_data, "gaussian"))))[3]
 
   results$method[i] <- "lme4"
   beta_results[i,] <- summary(lme4_model)$coefficients[,1]
@@ -150,7 +168,18 @@ try({
   results$nll_optimum[i] <- -as.numeric(summary(lme4_model)$logLik)
   results$num_optim_iter[i] <- lme4_model@optinfo$feval
 })
+}
+log_real_world_result("lme4", results$time_estimation[i])
+
+i <- i + 1
+additional <- append_additional_results(results, cov_results, beta_results, i,
+                                        Y, X, group_data, "gaussian",
+                                        init_cov_pars, init_betas)
+results <- additional$results
+cov_results <- additional$cov_results
+beta_results <- additional$beta_results
+log_real_world_summary(results)
 
 ################################################################################
 all_results <- cbind(results, cov_results, beta_results)
-saveRDS(list(all_results=all_results, data_info=data_info), "./cars.rds")
+save_real_world_results(all_results, data_info, "./../results/cars.rds")

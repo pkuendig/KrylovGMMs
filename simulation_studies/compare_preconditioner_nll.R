@@ -18,8 +18,8 @@ PRECONDITIONER_plot_names[["zero_infill_incomplete_cholesky"]] <- "ZIC"
 PRECONDITIONER_plot_names[["diagonal"]] <- "Diagonal"
 PRECONDITIONER_plot_names[["none"]] <- "None"
 
-run_simulations <- TRUE # If TRUE, calculations are run, otherwise only results are loaded and plots are generated
-run_cholesky <- TRUE # If TRUE, calculations for Cholesky are run (slow), otherwise only results are loaded
+run_simulations <- FALSE # If TRUE, calculations are run, otherwise only results are loaded and plots are generated
+run_cholesky <- FALSE # If TRUE, calculations for Cholesky are run (slow), otherwise only results are loaded
 n_rep <- 100 # number of simulation runs
 
 ## Function for creating plots
@@ -37,7 +37,7 @@ make_plots <- function(Itresults_1, CHOLtime=NULL, CHOL_ll=NULL,
     geom_point(size = 2) + geom_line(linewidth = 1) + 
     scale_y_continuous(trans = "log1p", breaks = c(0.3,1,2,5,10,20,50,100,200,500,1000)) +
     scale_color_brewer(type = "qual", palette = 6, name = "Preconditioner") + scale_shape_discrete(name = "Preconditioner") + 
-    labs(color = "") + ylab("Std. dev. of log-likelihood") + xlab("") + theme_bw() + 
+    labs(color = "") + ylab("Std. dev. of log-marg. likelihood") + xlab("") + theme_bw() + 
     theme(legend.position = "top", legend.text = element_text(size = 12*adj_size), legend.title = element_text(size = 12*adj_size),
           plot.margin = margin(t = 0, r = 40, b = 0, l = 5),
           axis.title.y = element_text(size = 12*adj_size),
@@ -94,7 +94,7 @@ make_plots <- function(Itresults_1, CHOLtime=NULL, CHOL_ll=NULL,
                         x = Inf, y = -Inf, hjust = 1.1, vjust = -0.5, size=5*adj_size)
   }
   if (!is.null(CHOL_ll)) {
-    p1 <- p1 + annotate("text", label = paste0("Negative log-lik. (Cholesky): ", round(CHOL_ll, digits = 1)), 
+    p1 <- p1 + annotate("text", label = paste0("Neg. log-marg. lik. (Cholesky): ", round(CHOL_ll, digits = 1)), 
                         x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size=5*adj_size)
   }
   combined <- rbind(ggplotGrob(p1), ggplotGrob(p2), size = "first")
@@ -112,7 +112,8 @@ m1 <- 50000
 n <- (2*m1) * 10
 
 NUM_RAND_VEC_TRACE <- c(10, 20, 50, 100)
-PRECONDITIONER <- c("symmetric_successive_over_relaxation", "zero_infill_incomplete_cholesky", "diagonal", "none")
+PRECONDITIONER <- c("symmetric_successive_over_relaxation", "zero_infill_incomplete_cholesky", 
+                    "diagonal", "none")
 
 for (snr in c(2,10)) {
   sigma2_1 <- 0.5^2
@@ -201,7 +202,7 @@ for (snr in c(2,10)) {
           adj_size <- 1.5
           p1 <- ggplot(Itresults, aes(x=t, y=negLL, fill=preconditioner)) + 
             geom_hline(yintercept=CHOLresult, linetype = "dashed") + theme_bw() +
-            geom_boxplot() + labs(fill  = "") + ylab("log-likelihood") +
+            geom_boxplot() + labs(fill  = "") + ylab("Neg. log-marginal likelihood") +
             scale_fill_brewer(type = "qual", palette=6, labels = scales::parse_format()) + 
             scale_y_continuous(n.breaks=8) +
             guides(fill = guide_legend(nrow = 1, byrow = TRUE)) + 
@@ -245,7 +246,8 @@ sigma2_2 <- 0.5^2
 cov_pars <- c(sigma2,sigma2_1,sigma2_2)
 
 M1s <- c(25000,50000,100000,250000)
-PRECONDITIONER <- c("symmetric_successive_over_relaxation", "zero_infill_incomplete_cholesky", "diagonal", "none")
+PRECONDITIONER <- c("symmetric_successive_over_relaxation", "zero_infill_incomplete_cholesky", 
+                    "diagonal", "none")
 
 cat("\n\n")
 print("******** Starting ll vs. m ")

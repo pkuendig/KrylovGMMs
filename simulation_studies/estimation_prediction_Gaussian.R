@@ -8,6 +8,7 @@ library(glmmTMB)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 source("./../data/simulated/gen_data.R")
+source("./../experiment_helpers.R")
 set.seed(1)
 
 m1 <- 2000
@@ -135,7 +136,7 @@ for(r in 1:n_rep){
   formula = as.formula(paste0("y ~ -1 + ",paste0(colnames(X_train), collapse = ' + ')," + ",
                               paste0("(1|",colnames(group_train),")", collapse = ' + '))) 
   lme4_model <- lmer(formula, REML = FALSE, data = data.frame(y = y_train, cbind(X_train, group_train)), 
-                     start=list(theta = init_cov_pars[-1], fixef = init_betas))
+                     start=list(theta = lme4_start_theta(init_cov_pars, group_train, "gaussian")))
   
   results$method[i] <- "lme4"
   results$sigma2[i] <- as.data.frame(VarCorr(lme4_model))[3,"vcov"]
@@ -160,7 +161,9 @@ for(r in 1:n_rep){
   formula = as.formula(paste0("y ~ -1 + ",paste0(colnames(X_train), collapse = ' + ')," + ",
                               paste0("(1|",colnames(group_train),")", collapse = ' + ')))
   glmmTMB_model <- glmmTMB(formula, family=gaussian(), data=data.frame(y = y_train, cbind(X_train, group_train)),
-                           start=list(theta = init_cov_pars[-1], beta = init_betas))
+                           start=list(theta = glmmtmb_start_theta(init_cov_pars, "gaussian"),
+                                      betadisp = glmmtmb_start_betadisp(init_cov_pars),
+                                      beta = init_betas))
   
   results$method[i] <- "glmmTMB"
   results$sigma2[i] <- (summary(glmmTMB_model)$sigma)^2
