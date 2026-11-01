@@ -12,7 +12,7 @@ To replicate the real-world data applications from Section 6, proceed as follows
     - `KDDCup09_upselling.R`
     - `MovieLens.R`
 
-3. Run `show_results.R` to generate the tables and plots from Section 6.
+3. Run `show_results.R` to generate the tables and plots for Section 6 and Appendix K.
 
 The application scripts also fit MixedModels.jl and R-INLA. The R-INLA fit uses
 the empirical-Bayes integration strategy (`int.strategy = "eb"`) with flat
